@@ -65,9 +65,9 @@ if(USE_VCPKG)
 	set(VCPKG_DIR "${CMAKE_SOURCE_DIR}/compat/vcbuild/vcpkg")
 	if(NOT EXISTS ${VCPKG_DIR})
 		message("Initializing vcpkg and building the Git's dependencies (this will take a while...)")
-		execute_process(COMMAND ${CMAKE_SOURCE_DIR}/compat/vcbuild/vcpkg_install.bat)
+		execute_process(COMMAND ${CMAKE_SOURCE_DIR}/compat/vcbuild/vcpkg_install.bat ${VCPKG_ARCH})
 	endif()
-	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_DIR}/installed/x64-windows")
+	list(APPEND CMAKE_PREFIX_PATH "${VCPKG_DIR}/installed/${VCPKG_ARCH}")
 
 	# In the vcpkg edition, we need this to be able to link to libcurl
 	set(CURL_NO_CURL_CMAKE ON)
@@ -223,8 +223,6 @@ list(APPEND compat_SOURCES sha1dc_git.c sha1dc/sha1.c sha1dc/ubc_check.c block-s
 
 
 add_compile_definitions(PAGER_ENV="LESS=FRX LV=-c"
-			ETC_GITATTRIBUTES="etc/gitattributes"
-			ETC_GITCONFIG="etc/gitconfig"
 			GIT_EXEC_PATH="libexec/git-core"
 			GIT_LOCALE_PATH="share/locale"
 			GIT_MAN_PATH="share/man"
@@ -239,10 +237,15 @@ add_compile_definitions(PAGER_ENV="LESS=FRX LV=-c"
 
 if(WIN32)
 	set(FALLBACK_RUNTIME_PREFIX /mingw64)
-	add_compile_definitions(FALLBACK_RUNTIME_PREFIX="${FALLBACK_RUNTIME_PREFIX}")
+	# Move system config into top-level /etc/
+	add_compile_definitions(FALLBACK_RUNTIME_PREFIX="${FALLBACK_RUNTIME_PREFIX}"
+		ETC_GITATTRIBUTES="../etc/gitattributes"
+		ETC_GITCONFIG="../etc/gitconfig")
 else()
 	set(FALLBACK_RUNTIME_PREFIX /home/$ENV{USER})
-	add_compile_definitions(FALLBACK_RUNTIME_PREFIX="${FALLBACK_RUNTIME_PREFIX}")
+	add_compile_definitions(FALLBACK_RUNTIME_PREFIX="${FALLBACK_RUNTIME_PREFIX}"
+		ETC_GITATTRIBUTES="etc/gitattributes"
+		ETC_GITCONFIG="etc/gitconfig")
 endif()
 
 
@@ -686,6 +689,9 @@ if(WIN32)
 	else()
 		message(FATAL_ERROR "Unhandled compiler: ${CMAKE_C_COMPILER_ID}")
 	endif()
+
+	add_executable(headless-git ${CMAKE_SOURCE_DIR}/compat/win32/headless.c)
+	target_link_options(headless-git PUBLIC /NOLOGO /ENTRY:wWinMainCRTStartup /SUBSYSTEM:WINDOWS)
 elseif(UNIX)
 	target_link_libraries(common-main pthread rt)
 endif()
@@ -1010,7 +1016,7 @@ file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "RUNTIME_PREFIX='${RUNTIME_PRE
 file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "NO_PYTHON='${NO_PYTHON}'\n")
 file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "SUPPORTS_SIMPLE_IPC='${SUPPORTS_SIMPLE_IPC}'\n")
 if(USE_VCPKG)
-	file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "PATH=\"$PATH:$TEST_DIRECTORY/../compat/vcbuild/vcpkg/installed/x64-windows/bin\"\n")
+	file(APPEND ${CMAKE_BINARY_DIR}/GIT-BUILD-OPTIONS "PATH=\"$PATH:$TEST_DIRECTORY/../compat/vcbuild/vcpkg/installed/${VCPKG_ARCH}/bin\"\n")
 endif()
 
 #Make the tests work when building out of the source tree
