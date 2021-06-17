@@ -111,11 +111,13 @@ void setup_pager(void)
 	 * to get the terminal size. Let's grab it now, and then set $COLUMNS
 	 * to communicate it to any sub-processes.
 	 */
+#if !defined(WIN32) || defined(TIOCGWINSZ)
 	{
 		char buf[64];
 		xsnprintf(buf, sizeof(buf), "%d", term_columns());
 		setenv("COLUMNS", buf, 0);
 	}
+#endif
 
 	setenv("GIT_PAGER_IN_USE", "true", 1);
 
